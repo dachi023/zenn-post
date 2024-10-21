@@ -1,7 +1,8 @@
 {
   "name": "zenn-post",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "zenn-cli": "^0.1.157"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
