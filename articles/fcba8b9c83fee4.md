@@ -1,5 +1,5 @@
 ---
-title: "Slackに常駐させたAIエージェントがMCP経由で社内情報を取得してくるまでの記録"
+title: "Slackに常駐させたAIエージェントがMCP経由で社内情報を取得してくるまで"
 emoji: "🐿️"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["ai", "mcp", "slack", "vercel"]
