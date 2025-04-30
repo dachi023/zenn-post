@@ -11,80 +11,86 @@ Slack上にAIアシスタントを置いて社内業務を改善できないか�
 
 ## この記事について
 
-本記事では実装で詰まった部分ややりたいことを実現するために考えた部分の話がほとんどなので実際のコードとかの話はあまりしていません。ただ、実装自体はテンプレートだったりライブラリのREADMEに書いてあることばかりなのでそのあたりは省きます(リンク貼っておきます)。
+本記事は実装で詰まった部分ややりたいことを実現するために考えた部分の話がほとんどで、実際にどんなコードを書くのかという話はあまりしていません。実装のほとんどはテンプレートで、入れたものもそれぞれのREADMEに書いてあることばかりなのでそのあたりは省きます(リンク貼っておきます)。
 
-- 自前のAIエージェントを動かしたい
-- エディタ以外からMCPに繋いで色々やってみたい
-- 実際に作ったとして何ができそうか知りたい
+- AIエージェントを動かしたい
+- どんな使い方ができるか知りたい
+- MCPに繋いで色々やってみたい
 
 という方向けの記事になっています。
 
 ## モチベーション
 
-ローカルの開発におけるMCPの利用はすでに当たり前のように普及していますが「みんなが社内情報検索できる環境あったら便利なんじゃないの」と思ったのがきっかけでした。
+ローカル環境でのMCPの利用はすでに当たり前のように普及していますが組織全体で利用しています、というケースをあまり聞いたことがなかったので検証しようと思いました。
 
-そこでまずは社内のSlackにAIエージェントがいて話しかけたら調べ物してきて回答してくれるというところをひとまずのゴールとします。
+このタイミングでは特に具体的な実用イメージとかはなく、社内SlackにAIエージェントがいてお話しができますくらいのゆるいゴール設定をしていました。
 
 ## とりあえずやってみる
 
-とにかく今は動いている姿を確認したので最小限の対応だけします。
+というわけなので、とりあえず動く状態を目指します。
 
 ### Slack上で会話ができるところまで
 
-とにかくサクッと動くものが欲しかったのでVercelのtemplatesにある[ai-sdk-slackbot](https://vercel.com/templates/other/ai-sdk-slackbot)を使ってVercel functionsにデプロイします。Slack Appの設定についてもすべてREADMEに記載してくれているのでenvに自分のトークンを設定するだけで動きます。
+とにかくサクッと動くものが欲しかったのでVercelのtemplatesにある[ai-sdk-slackbot](https://vercel.com/templates/other/ai-sdk-slackbot)を使ってVercel functionsにデプロイします。Slack AppのPermissionをはじめとした設定方法などはすべてREADMEに記載してくれているのでそれに沿ってAppを作成、その後にenvを設定するだけで動きます。
 
-テンプレートの中身はSlack関連の処理とVercel AI SDKを利用したLLMとの接続に関する実装がほとんです。フレームワークも使っていないのでコード量も少ないですし、AIエージェント初心者の私にはとても良いサンプルでした。
+[テンプレートの中身](https://github.com/vercel-labs/ai-sdk-slackbot)はSlack APIまわりとVercel AI SDKを利用したLLMへの接続に関する実装がほとんどです。フレームワークも使っていないのでコード量も少ないですし、AIエージェント開発初心者の私にはとても良いサンプルでした。
 
 今回モデルはgpt-4.1-miniにしましたが[価格や用途](https://openai.com/api/pricing/)から適切なものを選ぶのが良いでしょう。対応しているモデルの一覧は[AI SDKのドキュメント](https://sdk.vercel.ai/docs/introduction)から確認できます。
 
-### 不要なものを消す
+### 不要なものを消しておく
 
-テンプレートのコード内にはtoolsにgetWetherとsearchWebの2つが設定されています。getWetherは不要なので削除、searchWebはあとで[@modelcontextprotocol/server-brave-search](https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search)に置き換える予定なので消します。
+テンプレートのコード内にはgetWetherとsearchWebの2つがデフォルトで設定されています。getWetherは不要なので削除、searchWebは欲しい機能ですがあとで[@modelcontextprotocol/server-brave-search](https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search)に置き換えるつもりなので消します。
 
 https://github.com/vercel-labs/ai-sdk-slackbot/blob/513f1053919ce2559fd4821090921ad8664dd616/lib/generate-response.ts#L19-L69
 
-## MCPを接続する
+この状態でデプロイをするとSlack上で動くAIチャットボットが誕生します。もともとToolとして設定されていたものは全て消してあるので今できることは素のLLMと会話することだけです。
 
-ここまでくると自分のSlackワークスペース上で動くgpt-4.1-miniのSlackbotが誕生します。toolsに設定されていたものは全て消している状態なので今はGPTと自社のSlack上でお話しできるね、というだけです。
+## 社内リソースへアクセス可能にする
 
-ここからは今立ち上げたAIエージェントとMCPを接続して社内の情報を閲覧・検索できるようにしていきます。
+ここにMCPサーバーを接続して社内の情報を検索・詳細を取得できるようにしていきます。
 
 ### MCPサーバーと接続する
 
-基本的には公式で提供されているものだけを使います。また、今回は個別にMCPサーバーを立てるのではなく子プロセスとしてMCPを起動してそこにリクエストを投げる形を取っています。
+セキュリティ面でのリスクがあるので公式で提供されているものだけを使っています。また、今回は個別にMCPサーバーを立てるのではなく子プロセスとしてMCPを起動してそこにリクエストを投げる形を取っています。
 
-起動時の注意点としてディレクトリの書き込みに対しての制限などがあるため事前にインストール済みのパッケージを参照する必要があります。つまり、npxなどでその場で取得してきて実行する方式だと上手くいきません。
+起動時の注意点としてディレクトリの書き込みに対しての制限などがあるため事前にインストール済みのパッケージを参照する必要があります。つまり、npxなどでその場で取得してきて実行するやり方だとPermissionの問題で上手くいきません。
 
 一応、/tmp以下なら書き込み可能ですが容量の制限があるので今回は使用していません。
 
 https://community.vercel.com/t/how-do-install-dependencies-in-the-tmp-directory/1849/5
+
+### 例: notion-mcp-server
 
 ```sh
 pnpm add @notionhq/notion-mcp-server
 ```
 
 ```ts:notion-mcp.ts
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { experimental_createMCPClient } from "ai";
+import { dirname, join } from "path";
+
 export async function initNotionMCPServer() {
-	if (!process.env.NOTION_API_KEY) {
-		throw new Error("NOTION_API_KEY is not defined in environment variables");
-	}
+  if (!process.env.NOTION_API_KEY) {
+    throw new Error("NOTION_API_KEY is not defined in environment variables");
+  }
 
-	const path = dirname(
-		require.resolve("@notionhq/notion-mcp-server/package.json"),
-	);
-	const transport = new StdioClientTransport({
-		command: process.execPath,
-		args: [join(path, "bin/cli.mjs")],
-		env: {
-			...process.env,
-			OPENAPI_MCP_HEADERS: JSON.stringify({
-				Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
-				"Notion-Version": "2022-06-28",
-			}),
-		},
-	});
+  const path = dirname(
+    require.resolve("@notionhq/notion-mcp-server/package.json"),
+  );
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [join(path, "bin/cli.mjs")],
+    env: {
+      ...process.env,
+      OPENAPI_MCP_HEADERS: JSON.stringify({
+        Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+        "Notion-Version": "2022-06-28",
+      }),
+    },
+  });
 
-	return await experimental_createMCPClient({ transport });
+  return await experimental_createMCPClient({ transport });
 }
 ```
 
@@ -96,3 +102,70 @@ tools: {
   ...notionTools,
 },
 ```
+
+#### Notion検索を試してみる
+
+![](/images/fcba8b9c83fee4/slack.jpg)
+
+割といい感じに回答してくれます(GPTのおかげではある)。
+
+今回の場合は以下のプロンプトを `generateText()` 呼び出し時に渡しました。
+
+```js:generate-text.ts
+system: `
+  ## 基本情報
+  - 会話・回答のルール
+    - 質問が明確でない場合はまずは不明点をまとめて質問する
+
+  ## Notionドキュメントの検索
+  回答フォーマットは以下で、調査した結果を適切に記載する。
+  また、引用元についてはURLを必ず記載する。
+  \`\`\`
+  【質問】
+  【回答】
+  【引用元】
+  \`\`\`
+`
+```
+
+https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text#generatetext
+
+### 他MCPサーバーとの接続
+
+ここまでの流れが1回できたらあとは流用して接続したいMCPサーバーの設定と利用の目的を設定するだけなので詳細は省きますが、[sentry-mcp](https://github.com/getsentry/sentry-mcp)でエラー情報を取得・分析して[brave-search](https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search)で類似のエラーについて検索するというフローを作ってみたのですが結構良さそうです。
+
+```js:generate-text.ts
+system: `
+  ## Sentryのエラー調査
+  回答フォーマットは以下で、調査した結果を適切に記載する。
+  また、引用元についてはURLを必ず記載する。
+  \`\`\`
+  【概要】
+  - XXX
+  【分析】
+  - XXX
+  【緊急度】
+  - XXX
+  【Web検索で見つけた類似のエラー】
+  - XXX
+  【修正方法】
+  - XXX
+  【引用元】
+  - XXX
+  \`\`\`
+
+  1. エラー内容をSentryから取得し確認する
+  2. 情報を整理し以下を明確にした上で回答に記載する
+    - いつからエラーが発生・頻発しているのか
+    - エラーが発生している原因・影響範囲
+    - どの程度の緊急度で対応しなければいけないか
+      - 発生数やユーザー数などから推測する
+  3. Webで類似のエラーを検索し、情報を収集する
+  4. SentryやWebから収集した情報をもとに修正方法の提案をする
+  \`\`\`
+`
+```
+
+## まとめ
+
+どんな質問にも質の高い回答をさせるのは難しいと感じたので特定のワークフローで価値が出ることを目指してみました。身近な課題を潰していくのがイメージ湧きやすくておすすめです。実装難易度は思っているより全然低かったのでぜひチャレンジしてみてください。
