@@ -3,7 +3,7 @@ title: "Slack上で動くAIエージェントを実装し、社内情報を取�
 emoji: "🐿️"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["ai", "mcp", "slack", "vercel"]
-published: false
+published: true
 publication_name: "moshjp"
 ---
 
