@@ -3,7 +3,7 @@ title: "Storybookのカタログ設計"
 emoji: "🖼️"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["storybook"]
-published: false
+published: true
 publication_name: "moshjp"
 ---
 
