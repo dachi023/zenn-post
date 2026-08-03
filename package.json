@@ -2,13 +2,13 @@
   "name": "zenn-post",
   "devDependencies": {
     "@types/bun": "latest",
-    "textlint": "^14.2.1",
-    "textlint-filter-rule-comments": "^1.2.2",
-    "textlint-rule-preset-ja-spacing": "^2.4.3",
-    "textlint-rule-preset-ja-technical-writing": "^10.0.1",
-    "zenn-cli": "^0.1.159"
+    "textlint": "^15.8.0",
+    "textlint-filter-rule-comments": "^1.3.0",
+    "textlint-rule-preset-ja-spacing": "^3.0.2",
+    "textlint-rule-preset-ja-technical-writing": "^12.0.2",
+    "zenn-cli": "^0.5.2"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^7.0.2"
   }
 }
